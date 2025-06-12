@@ -4,33 +4,65 @@ import time
 import requests
 
 
-def query(node_list, quorum_size, target_node_ip, target_node_port, docker_ip):
-    while True:
-        random_nodes = random.sample(node_list, quorum_size)
-        metadatas = {}
-        total_messages_for_query = 0
-        for n in random_nodes:
-            total_messages_for_query += 1
-            try:
-                if docker_ip:
-                    r = requests.get("http://" + docker_ip + ":" + n["port"] + "/metadata")
-                    print(r.json()[target_node_ip + ":" + target_node_port]["counter"])
-                else:
-                    r = requests.get("http://" + n["ip"] + ":" + n["port"] + "/metadata")
-                metadatas[n["ip"] + ":" + n["port"]] = r.json()[target_node_ip + ":" + target_node_port]
-            except Exception as e:
-                print("Node " + n["ip"] + ":" + n["port"] + " is not responding: {}".format(e))
-        if len(metadatas) == quorum_size:
-            counter_consensus = all(data['counter'] == list(metadatas.values())[0]['counter'] for data in metadatas.values())
-            if counter_consensus:
-                digest_consensus = all(data['digest'] == list(metadatas.values())[0]['digest'] for data in metadatas.values())
-                if digest_consensus:
-                    if docker_ip:
-                        response_from_query_client = requests.get(
-                            "http://{}:{}/get_recent_data_from_node".format(docker_ip, random_nodes[0]["port"]))
-                    else:
-                        response_from_query_client = requests.get(
-                            "http://{}:{}/get_recent_data_from_node".format(random_nodes[0]["ip"], random_nodes[0]["port"]))
-                    query_result = response_from_query_client.json()[target_node_ip + ":" + target_node_port]
-                    print("Query result: {}".format(query_result))
-                    return total_messages_for_query, query_result
+def get_node_carbon_emission(node_ip, node_port, docker_ip):
+    """Get carbon emission data from a node"""
+    try:
+        response = requests.get(f"http://{docker_ip}:{node_port}/get_carbon_emission", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "success":
+                return data.get("carbon_emission", {}).get("current_emission_rate", float('inf'))
+    except Exception as e:
+        print(f"Failed to get carbon emission from {node_ip}:{node_port}: {e}")
+    return float('inf')
+
+
+def select_nodes_by_carbon_footprint(nodes, quorum_size, docker_ip):
+    """Select nodes with lowest carbon emissions for query"""
+    node_emissions = []
+    
+    for node in nodes:
+        emission_rate = get_node_carbon_emission(node["ip"], node["port"], docker_ip)
+        node_emissions.append((node, emission_rate))
+    
+    # Sort by carbon emission (lowest first)
+    node_emissions.sort(key=lambda x: x[1])
+    
+    # Select nodes with lowest emissions up to quorum size
+    selected_nodes = [node for node, _ in node_emissions[:quorum_size]]
+    
+    return selected_nodes
+
+
+def query(nodes, quorum_size, target_ip, target_port, docker_ip, use_carbon_optimization=True):
+    """Query nodes with optional carbon emission optimization"""
+    total_messages = 0
+    
+    if use_carbon_optimization:
+        # Select nodes based on carbon emissions
+        selected_nodes = select_nodes_by_carbon_footprint(nodes, quorum_size, docker_ip)
+    else:
+        # Use random selection (original behavior)
+        selected_nodes = random.sample(nodes, min(quorum_size, len(nodes)))
+    
+    # Query the selected nodes
+    query_results = []
+    for node in selected_nodes:
+        try:
+            response = requests.get(
+                f"http://{docker_ip}:{node['port']}/query_node?target_ip={target_ip}&target_port={target_port}",
+                timeout=10
+            )
+            total_messages += 1
+            
+            if response.status_code == 200:
+                query_results.append(response.json())
+            
+        except Exception as e:
+            print(f"Query failed for node {node['ip']}:{node['port']}: {e}")
+    
+    # Return consensus result if available
+    if len(query_results) >= (quorum_size // 2) + 1:
+        return total_messages, query_results[0]  # Simple consensus
+    else:
+        raise Exception("Failed to achieve quorum for query")

@@ -20,6 +20,10 @@ def mk_digest(to_digest):
 def get_new_data():
     node = Node.instance()
     network = psutil.net_io_counters().bytes_recv + psutil.net_io_counters().bytes_sent
+    
+    # Calculate carbon emission based on CPU usage and power consumption
+    carbon_emission = node.calculate_carbon_emission()
+    
     data = {
         "counter": "{}".format(node.gossip_counter),
         "cycle": "{}".format(node.cycle),
@@ -32,7 +36,9 @@ def get_new_data():
             "timestamp": "{}".format(time.time()),
             "failureCount": node.failure_counter,
             "failureList": node.failure_list,
-            "nodeAlive": node.is_alive},
+            "nodeAlive": node.is_alive,
+            "carbonEmission": carbon_emission,
+            "carbonEmissionRate": node.carbon_emission_rate},
         "appSate": {
             "cpu": "{}".format(psutil.cpu_percent()),
             "memory": "{}".format(psutil.virtual_memory().percent),
@@ -42,9 +48,6 @@ def get_new_data():
     digest = mk_digest(data)
     data["digest"] = digest
     return data
-
-
-
 
 
 @Singleton
@@ -68,6 +71,52 @@ class Node:
         self.session_to_monitoring = requests.Session()
         self.push_mode = None
         self.is_send_data_back = None
+        self.carbon_emission_rate = 0.5  # kg CO2 per kWh (default grid emission factor)
+        self.total_carbon_emission = 0.0
+        self.last_emission_calculation = time.time()
+        self.load_factor = 1.0  # Current load factor (1.0 = normal load)
+
+    def calculate_carbon_emission(self):
+        """Calculate carbon emission based on CPU usage and estimated power consumption"""
+        current_time = time.time()
+        time_delta = current_time - self.last_emission_calculation
+        
+        # Get current CPU usage
+        cpu_percent = psutil.cpu_percent()
+        
+        # Estimate power consumption based on CPU usage
+        # Assuming base power of 50W and max additional 150W for full CPU load
+        base_power_watts = 50
+        max_additional_power_watts = 150
+        current_power_watts = base_power_watts + (cpu_percent / 100.0) * max_additional_power_watts
+        
+        # Apply load factor
+        current_power_watts *= self.load_factor
+        
+        # Convert to kWh for the time period
+        power_kwh = (current_power_watts / 1000.0) * (time_delta / 3600.0)
+        
+        # Calculate carbon emission
+        carbon_emission = power_kwh * self.carbon_emission_rate
+        
+        # Update total emission
+        self.total_carbon_emission += carbon_emission
+        self.last_emission_calculation = current_time
+        
+        return {
+            "current_emission_rate": carbon_emission / (time_delta / 3600.0) if time_delta > 0 else 0,
+            "total_emission": self.total_carbon_emission,
+            "power_consumption_watts": current_power_watts,
+            "timestamp": current_time
+        }
+    
+    def set_carbon_emission_rate(self, rate):
+        """Set the carbon emission rate for this node"""
+        self.carbon_emission_rate = rate
+    
+    def set_load_factor(self, factor):
+        """Set the current load factor for this node"""
+        self.load_factor = factor
 
     def start_gossip_counter(self):
         while self.is_alive:

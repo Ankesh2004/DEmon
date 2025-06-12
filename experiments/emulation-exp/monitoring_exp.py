@@ -53,6 +53,9 @@ class Run:
         self.max_round_is_reached = False
         self.ip_per_ic = {}
         self.stopped_nodes = {}
+        self.carbon_emissions_per_node = {}
+        self.load_rerouting_enabled = True
+        self.carbon_threshold = 1.0  # kg CO2 per hour threshold
 
     def set_db_id(self, param):
         self.db_id = param
@@ -74,6 +77,11 @@ class Experiment:
         self.is_send_data_back = is_send_data_back
         self.push_mode = push_mode
         self.NodeDB = dbConnector.NodeDB()
+        self.carbon_rerouting_stats = {
+            'total_reroutes': 0,
+            'emission_savings': 0.0,
+            'rerouting_decisions': []
+        }
 
     def set_db_id(self, param):
         self.db_id = param
@@ -416,6 +424,23 @@ def update_data_entries_per_ip():
     data_stored_in_node = inc["data"]
     data_flow_per_round = inc["data_flow_per_round"]
 
+    # Extract carbon emission data if available
+    carbon_emission_data = inc.get("carbon_emission", {})
+    node_key = client_ip + ":" + client_port
+    
+    if carbon_emission_data:
+        experiment.runs[-1].carbon_emissions_per_node[node_key] = carbon_emission_data
+        
+        # Save carbon emission data to database
+        experiment.query_queue.put((
+            "INSERT INTO carbon_emissions (run_id, ip, port, round, current_emission_rate, total_emission, power_consumption, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (experiment.runs[-1].db_id, client_ip, client_port, round, 
+             carbon_emission_data.get('current_emission_rate', 0),
+             carbon_emission_data.get('total_emission', 0),
+             carbon_emission_data.get('power_consumption_watts', 0),
+             carbon_emission_data.get('timestamp', time.time()))
+        ))
+
     nd = data_flow_per_round.setdefault('nd', 0)
     fd = data_flow_per_round.setdefault('fd', 0)
     rm = data_flow_per_round.setdefault('rm', 0)
@@ -426,6 +451,7 @@ def update_data_entries_per_ip():
     experiment.runs[-1].convergence_round = max(experiment.runs[-1].convergence_round, int(round))
     experiment.runs[-1].message_count += 1
     experiment.runs[-1].data_entries_per_ip[client_ip + ":" + client_port] = data_stored_in_node
+    
     if not experiment.runs[-1].is_converged:
         if int(nd) > experiment.runs[-1].node_count:
             nd = experiment.runs[-1].node_count
@@ -438,11 +464,98 @@ def update_data_entries_per_ip():
         experiment.query_queue.put((
                                    "INSERT INTO round_of_node (run_id, ip, port, round, nd, fd, rm, ic, bytes_of_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                                    insert_parameters))
+    
+    # Perform carbon-based load rerouting
+    if int(round) % 5 == 0:  # Check every 5 rounds
+        reroute_load_based_on_emissions(experiment.runs[-1])
+    
     check_convergence(experiment.runs[-1])
     if int(round) >= 80:
         run_converged(experiment.runs[-1])
         experiment.runs[-1].max_round_is_reached = True
     return "OK"
+
+
+def select_low_emission_node(run, exclude_nodes=None):
+    """Select the node with lowest carbon emission rate for load rerouting"""
+    if exclude_nodes is None:
+        exclude_nodes = set()
+    
+    best_node = None
+    lowest_emission_rate = float('inf')
+    
+    for node_key, emission_data in run.carbon_emissions_per_node.items():
+        if node_key in exclude_nodes:
+            continue
+            
+        # Check if node is alive
+        node_ip, node_port = node_key.split(':')
+        node_alive = False
+        for node in run.node_list:
+            if node["ip"] == node_ip and str(node["port"]) == node_port:
+                if node.get("is_alive", True):
+                    node_alive = True
+                break
+        
+        if not node_alive:
+            continue
+            
+        current_rate = emission_data.get('current_emission_rate', float('inf'))
+        if current_rate < lowest_emission_rate:
+            lowest_emission_rate = current_rate
+            best_node = node_key
+    
+    return best_node, lowest_emission_rate
+
+
+def reroute_load_based_on_emissions(run):
+    """Implement load rerouting logic based on carbon emissions"""
+    if not run.load_rerouting_enabled or not run.carbon_emissions_per_node:
+        return
+    
+    # Find nodes with high emissions
+    high_emission_nodes = []
+    for node_key, emission_data in run.carbon_emissions_per_node.items():
+        current_rate = emission_data.get('current_emission_rate', 0)
+        if current_rate > run.carbon_threshold:
+            high_emission_nodes.append((node_key, current_rate))
+    
+    # Sort by emission rate (highest first)
+    high_emission_nodes.sort(key=lambda x: x[1], reverse=True)
+    
+    # Reroute load from high emission nodes to low emission nodes
+    for high_node_key, high_emission_rate in high_emission_nodes:
+        low_node_key, low_emission_rate = select_low_emission_node(run, {high_node_key})
+        
+        if low_node_key and low_emission_rate < high_emission_rate * 0.8:  # 20% improvement threshold
+            # Perform rerouting
+            emission_savings = high_emission_rate - low_emission_rate
+            experiment.carbon_rerouting_stats['total_reroutes'] += 1
+            experiment.carbon_rerouting_stats['emission_savings'] += emission_savings
+            experiment.carbon_rerouting_stats['rerouting_decisions'].append({
+                'timestamp': time.time(),
+                'from_node': high_node_key,
+                'to_node': low_node_key,
+                'emission_savings': emission_savings,
+                'from_emission_rate': high_emission_rate,
+                'to_emission_rate': low_emission_rate
+            })
+            
+            print(f"Load rerouted from {high_node_key} (emission: {high_emission_rate:.4f}) to {low_node_key} (emission: {low_emission_rate:.4f})")
+            
+            # Update load factors (simulate load transfer)
+            try:
+                # Reduce load on high emission node
+                high_node_ip, high_node_port = high_node_key.split(':')
+                requests.post(f"http://{high_node_ip}:{high_node_port}/set_load_factor", 
+                            json={"load_factor": 0.7}, timeout=5)
+                
+                # Increase load on low emission node
+                low_node_ip, low_node_port = low_node_key.split(':')
+                requests.post(f"http://{low_node_ip}:{low_node_port}/set_load_factor", 
+                            json={"load_factor": 1.3}, timeout=5)
+            except Exception as e:
+                print(f"Error updating load factors: {e}")
 
 
 def generate_run(node_count, gossip_rate, target_count, run_count):
