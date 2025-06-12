@@ -167,7 +167,7 @@ def start_run(run, monitoring_address):
 
 def run_converged(run):
     run.convergence_message_count = run.message_count
-    run.convergence_time = (time.time() - run.start_time)
+    run.convergence_time = (time.time() - run.start_time) if run.start_time else 0
     if not run.is_converged:
         print("Convergence time: {}".format(run.convergence_time))
         print("Convergence message count: {}".format(run.convergence_message_count))
@@ -179,14 +179,13 @@ def check_convergence(run):
     if len(run.data_entries_per_ip) < run.node_count:
         return False
     for ip in run.data_entries_per_ip:
-        if len(run.data_entries_per_ip[ip]) < run.node_count:
-            return False
-        if len(run.data_entries_per_ip[ip]) > run.node_count:
+        if len(run.data_entries_per_ip[ip]) != run.node_count:
             return False
         for node_data in run.data_entries_per_ip[ip]:
             if "counter" not in run.data_entries_per_ip[ip][node_data]:
                 return False
     run_converged(run)
+    return True
 
 def check_if_all_nodes_are_reset(run):
     for node in run.node_list:
@@ -235,13 +234,12 @@ def prepare_run(run):
     while not nodes_are_ready(run):
         time.sleep(1)
     save_run_to_database(run)
-    print("Run {} started".format(run.db_id), flush=True)
+    print("Run {} started with {} nodes".format(run.db_id, run.node_count), flush=True)
     time.sleep(10)
 
 def save_query_in_database(run, i, failure_percent, target_key, time_to_query, total_messages_for_query, success):
     experiment.db.save_query_in_database(run.db_id, run.node_count, i, failure_percent, time_to_query,
-                                         total_messages_for_query, success)
-    pass
+                                        total_messages_for_query, success)
 
 def run_queries(run, query_count, failure_percent):
     docker_ip = parser.get('system_setting', 'docker_ip')
@@ -269,7 +267,7 @@ def run_queries(run, query_count, failure_percent):
                               total_messages_for_query, success)
 
 def stop_node_percentage(run, percent):
-    print("stopping percentage of nodes: {}".format(percent))
+    print("Stopping {}% of nodes".format(percent * 100))
     if percent == 0:
         return
     nodes_to_stop_count = int(len(run.node_list) * percent)
@@ -282,22 +280,19 @@ def stop_node_percentage(run, percent):
             run.node_list[i]["is_alive"] = False
             run.stopped_nodes[i] = run.node_list[i]
         except Exception as e:
-            print("An error occurred while stopping container: {}".format(e))
-    print("{}% of nodes (n={}) are stopped".format(percent * 100, nodes_to_stop_count))
-    return
+            print("Error stopping container: {}".format(e))
+    print("{}% of nodes (n={}) stopped".format(percent * 100, nodes_to_stop_count))
 
 def update_during_run(run):
     while not run.is_converged:
-        pass
-    print(parser.get('DemonParam', 'continue_after_convergence'))
+        time.sleep(1)
+    print("Convergence reached after {} seconds".format(run.convergence_time))
     if parser.get('DemonParam', 'continue_after_convergence') == "1":
-        print("Convergence reached, continuing run")
+        print("Continuing run after convergence")
         while not run.max_round_is_reached:
-            pass
-        print("Max round reached: stop now")
-    print("should start queries now")
+            time.sleep(1)
+        print("Max round reached: stopping")
     if parser.get('system_setting', 'query_logic') == "1":
-        print(parser.get('system_setting', 'failure_rate'))
         failure_ratio = float(parser.get('system_setting', 'failure_rate'))
         stop_node_percentage(run, failure_ratio)
         time.sleep(20)
@@ -313,10 +308,17 @@ def make_save_able_dic_from_run(run):
 def save_run_to_database(run):
     run.db_id = experiment.db.insert_into_run(experiment.db_id, run.run, run.node_count, run.gossip_rate,
                                               run.target_count)
+    print("Run saved with db_id: {}".format(run.db_id))
 
 def save_converged_run_to_database(run):
-    experiment.db.insert_into_converged_run(run.db_id, run.convergence_round, run.convergence_message_count,
-                                            run.convergence_time)
+    try:
+        experiment.db.insert_into_converged_run(run.db_id, run.convergence_round, run.convergence_message_count,
+                                               run.convergence_time)
+        print("Converged run saved: run_id={}, time={}, messages={}".format(
+            run.db_id, run.convergence_time, run.convergence_message_count))
+    except Exception as e:
+        print("Failed to save converged run: {}".format(e))
+        print("Trace: {}".format(traceback.format_exc()))
 
 connection_pool = sqlite3.connect("./new_folder/NodeStorage.db", check_same_thread=False, isolation_level=None)
 database_lock = threading.Lock()
@@ -388,9 +390,6 @@ def update_data_entries_per_ip():
                                    "INSERT INTO round_of_node (run_id, ip, port, round, nd, fd, rm, ic, bytes_of_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                                    insert_parameters))
     check_convergence(experiment.runs[-1])
-    if int(round) >= 80:
-        run_converged(experiment.runs[-1])
-        experiment.runs[-1].max_round_is_reached = True
     return "OK"
 
 def generate_run(node_count, gossip_rate, target_count, run_count):
@@ -415,7 +414,8 @@ def print_experiment():
     experiment.query_queue.put(None)
     experiment.query_thread.join()
     for run in experiment.runs:
-        print("Run {}, converged after {} messages and {} seconds".format(run.node_count, run.convergence_message_count,run.convergence_time))
+        print("Run {}, converged after {} messages and {} seconds".format(run.node_count, run.convergence_message_count,
+                                                                          run.convergence_time))
 
 @monitoring_demon.route('/start', methods=['GET'])
 def start_demon():
@@ -440,7 +440,7 @@ def start_demon():
                     reset_run_sync(run)
     print_experiment()
     delete_all_nodes()
-    return "OK - Experiment finished - bussi k."
+    return "OK - Experiment finished"
 
 if __name__ == "__main__":
     monitoring_demon.run(host='0.0.0.0', port=4000, debug=False, threaded=True)
