@@ -1,46 +1,46 @@
 import sqlite3
 import matplotlib.pyplot as plt
 
-dbname = 'experiments.db'
+DB_FILE = './demonDB.db'  # Adjust path if needed
 
 
-
-class DemonDataDB:
-    def __init__(self):
-        self.connection = sqlite3.connect(dbname, check_same_thread=False)
-        self.cursor = self.connection.cursor()
-
-    def get_data_retrieval_by_failure_rate(self):
-        # Example: assumes a table 'data_retrieval' with columns 'failure_rate' and 'retrieved_data'
-        # Modify the query as per your schema
-        try:
-            self.cursor.execute(
-                "SELECT failure_rate, AVG(retrieved_data) FROM data_retrieval GROUP BY failure_rate"
-            )
-            return self.cursor.fetchall()
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
+def get_failure_vs_success():
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    # Count number of successful queries for each failure_percent
+    cur.execute("""
+        SELECT failure_percent, COUNT(*) as total, 
+               SUM(CASE WHEN success='1' OR success='True' OR success='true' THEN 1 ELSE 0 END) as success_count
+        FROM query
+        GROUP BY failure_percent
+        ORDER BY failure_percent
+    """)
+    data = cur.fetchall()
+    conn.close()
+    return data
 
 
-def plot_data_retrieval_vs_failure_rate():
-    demon_db = DemonDataDB()
-    data = demon_db.get_data_retrieval_by_failure_rate()
+def plot_failure_vs_success():
+    data = get_failure_vs_success()
     if not data:
-        print("No data to plot.")
+        print("No data found in query table.")
         return
     failure_rates = [row[0] for row in data]
-    retrievals = [row[1] for row in data]
-    plt.plot(failure_rates, retrievals, marker='o')
-    plt.xlabel('Failure Rate')
-    plt.ylabel('Data Retrieval')
-    plt.title('Data Retrieval vs Failure Rate')
+    total_queries = [row[1] for row in data]
+    success_counts = [row[2] for row in data]
+    # Calculate success rate as percentage
+    success_percent = [100 * s / t if t > 0 else 0 for s, t in zip(success_counts, total_queries)]
+
+    plt.plot(failure_rates, success_percent, marker='o')
+    plt.xlabel('Failure Rate (%)')
+    plt.ylabel('Success Rate (%)')
+    plt.title('Failure Rate vs Success Rate')
     plt.grid(True)
-    plt.savefig('data_retrieval_vs_failure_rate.png')
+    plt.savefig('failure_vs_success.png')
     plt.show()
 
 
 if __name__ == '__main__':
-    plot_data_retrieval_vs_failure_rate()
+    plot_failure_vs_success()
 
 
