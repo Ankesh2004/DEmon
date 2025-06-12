@@ -1,16 +1,11 @@
 import sqlite3
 import configparser
 
-
 parser = configparser.ConfigParser()
 parser.read('demonMonitoring.ini')
 
-
 def get_connection():
-    return sqlite3.connect('demonDB.db', check_same_thread=False)
-
-
-
+    return sqlite3.connect('./new_folder/demonDB.db', check_same_thread=False)
 
 def insert_into_round_of_node(run_id, ip, port, this_round, nd, fd, rm, ic, bytes_of_data, connection):
     try:
@@ -44,7 +39,6 @@ def insert_into_round_of_node(run_id, ip, port, this_round, nd, fd, rm, ic, byte
     except Exception as e:
         print("Error db: {}".format(e))
         return False
-
 
 def insert_into_round_of_node_max_round(run_id, ip, port, this_round, nd, fd, rm, ic, bytes_of_data, connection):
     try:
@@ -81,7 +75,7 @@ def insert_into_round_of_node_max_round(run_id, ip, port, this_round, nd, fd, rm
 
 class NodeDB:
     def __init__(self):
-        self.connection = sqlite3.connect('NodeStorage.db', check_same_thread=False)
+        self.connection = sqlite3.connect('./new_folder/NodeStorage.db', check_same_thread=False)
         self.cursor = self.connection.cursor()
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS unique_entries (
@@ -104,18 +98,16 @@ class NodeDB:
         self.connection.close()
 
     def get_connection(self):
-        return sqlite3.connect('NodeStorage.db', check_same_thread=False)
-
+        return sqlite3.connect('./new_folder/NodeStorage.db', check_same_thread=False)
 
 class DemonDB:
     def __init__(self):
-        self.connection = sqlite3.connect('demonDB.db', check_same_thread=False)
+        self.connection = sqlite3.connect('./new_folder/demonDB.db', check_same_thread=False)
         self.cursor = self.connection.cursor()
         self.cursor.execute(
             "CREATE TABLE IF NOT EXISTS experiment ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)")
-
         self.cursor.execute(
             "CREATE TABLE IF NOT EXISTS run ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -168,7 +160,7 @@ class DemonDB:
 
     def insert_into_experiment(self, timestamp):
         try:
-            self.connection = sqlite3.connect('demonDB.db', check_same_thread=False)
+            self.connection = sqlite3.connect('./new_folder/demonDB.db', check_same_thread=False)
             self.cursor = self.connection.cursor()
             self.cursor.execute("INSERT INTO experiment (timestamp) VALUES (?)", (timestamp,))
             to_return = self.cursor.lastrowid
@@ -181,7 +173,7 @@ class DemonDB:
 
     def insert_into_run(self, experiment_id, run_count, node_count, gossip_rate, target_count):
         try:
-            self.connection = sqlite3.connect('demonDB.db', check_same_thread=False)
+            self.connection = sqlite3.connect('./new_folder/demonDB.db', check_same_thread=False)
             self.cursor = self.connection.cursor()
             self.cursor.execute("INSERT INTO run ("
                                 "experiment_id,"
@@ -235,7 +227,7 @@ class DemonDB:
 
     def insert_into_converged_run(self, run_id, convergence_round, convergence_message_count, convergence_time):
         try:
-            self.connection = sqlite3.connect('demonDB.db', check_same_thread=False)
+            self.connection = sqlite3.connect('./new_folder/demonDB.db', check_same_thread=False)
             self.cursor = self.connection.cursor()
             self.cursor.execute("UPDATE run SET "
                                 "convergence_round = ?, "

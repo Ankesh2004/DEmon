@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm, rcParams
 
-dbname = 'experiments.db'
+dbname = 'demonDB.db'
 
 
 
