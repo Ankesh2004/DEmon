@@ -107,7 +107,7 @@ def get_target_count(node_count, target_count_range):
 
 def spawn_node(index, node_list, client, custom_network_name):
     try:
-        new_node = docker_client.containers.run("demonv1", auto_remove=True, detach=True,
+        new_node = docker_client.containers.run("demonv1", auto_remove=False, detach=True,
                                                 network_mode=custom_network_name,
                                                 ports={'5000': node_list[index]["port"]})
     except Exception as e:
