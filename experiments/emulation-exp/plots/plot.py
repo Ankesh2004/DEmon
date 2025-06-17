@@ -923,6 +923,150 @@ def plot_3d_time_gr_gc():
     fig.savefig('time3dplot.pdf')
     plt.clf()
 
+
+def plot_priority_based_metrics():
+    """Plot metrics sent vs filtered by priority and their impact on bandwidth"""
+    plt.figure(figsize=(12, 8))
+    
+    demon_db = DemonDataDB()
+    
+    # Query database for metrics stats
+    try:
+        demon_db.connection = sqlite3.connect(dbname, check_same_thread=False)
+        demon_db.cursor = demon_db.connection.cursor()
+        demon_db.cursor.execute('''
+            SELECT round, SUM(metrics_sent) as sent, SUM(metrics_filtered) as filtered
+            FROM round_metrics_stats
+            GROUP BY round
+            ORDER BY round
+        ''')
+        metrics_data = demon_db.cursor.fetchall()
+        demon_db.connection.close()
+    except Exception as e:
+        print(f"Error querying metrics data: {e}")
+        return
+    
+    if not metrics_data:
+        print("No metrics data found for priority-based filtering")
+        return
+        
+    # Prepare data for plotting
+    rounds = [d[0] for d in metrics_data]
+    sent = [d[1] for d in metrics_data]
+    filtered = [d[2] for d in metrics_data]
+    total = [s + f for s, f in zip(sent, filtered)]
+    savings = [100 * f / (s + f) if (s + f) > 0 else 0 for s, f in zip(sent, filtered)]
+    
+    # Create subplot for metrics counts
+    plt.subplot(2, 1, 1)
+    plt.stackplot(rounds, sent, filtered, 
+                 labels=['Sent Metrics', 'Filtered Metrics'],
+                 colors=['royalblue', 'tomato'])
+    plt.xlabel('Rounds', fontsize=14)
+    plt.ylabel('Metric Count', fontsize=14)
+    plt.title('Priority-Based Metric Transmission', fontsize=16)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.legend(loc='upper right', fontsize=12)
+    
+    # Create subplot for bandwidth savings percentage
+    plt.subplot(2, 1, 2)
+    plt.plot(rounds, savings, color='mediumseagreen', linewidth=2, marker='o', markersize=4)
+    plt.xlabel('Rounds', fontsize=14)
+    plt.ylabel('Bandwidth Savings (%)', fontsize=14)
+    plt.title('Bandwidth Savings from Priority-Based Filtering', fontsize=16)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    
+    # Add a horizontal line for average savings
+    avg_savings = sum(savings) / len(savings) if savings else 0
+    plt.axhline(y=avg_savings, color='darkred', linestyle='--', 
+                label=f'Avg Savings: {avg_savings:.1f}%')
+    plt.legend(fontsize=12)
+    
+    # Save the plot
+    plt.savefig('priority_based_metrics.png')
+    print(f"Saved priority-based metrics plot to priority_based_metrics.png")
+    plt.savefig('priority_based_metrics.pdf')
+    plt.clf()
+
+
+def plot_priority_metrics_by_type():
+    """Plot the transmission frequency of different metric types"""
+    plt.figure(figsize=(10, 6))
+    
+    demon_db = DemonDataDB()
+    
+    # Query database for metric type stats
+    cursor = demon_db.connection.cursor()
+    cursor.execute('''
+        SELECT metric_type, COUNT(*) as sent_count
+        FROM metric_transmissions
+        WHERE was_sent = 1
+        GROUP BY metric_type
+    ''')
+    sent_data = cursor.fetchall()
+    
+    cursor.execute('''
+        SELECT metric_type, COUNT(*) as filtered_count
+        FROM metric_transmissions
+        WHERE was_sent = 0
+        GROUP BY metric_type
+    ''')
+    filtered_data = cursor.fetchall()
+    
+    # Convert to dictionaries for easier access
+    sent_dict = {d[0]: d[1] for d in sent_data}
+    filtered_dict = {d[0]: d[1] for d in filtered_data}
+    
+    # List of all metric types
+    metric_types = list(set(list(sent_dict.keys()) + list(filtered_dict.keys())))
+    
+    # Prepare data for plotting
+    sent_counts = [sent_dict.get(m, 0) for m in metric_types]
+    filtered_counts = [filtered_dict.get(m, 0) for m in metric_types]
+    total_counts = [s + f for s, f in zip(sent_counts, filtered_counts)]
+    
+    # Calculate percentages
+    sent_pct = [100 * s / t if t > 0 else 0 for s, t in zip(sent_counts, total_counts)]
+    filtered_pct = [100 * f / t if t > 0 else 0 for f, t in zip(filtered_counts, total_counts)]
+    
+    # Create the bar chart
+    x = range(len(metric_types))
+    width = 0.35
+    
+    fig, ax = plt.subplots(figsize=(12, 7))
+    sent_bars = ax.bar([i - width/2 for i in x], sent_pct, width, label='Sent', color='royalblue')
+    filtered_bars = ax.bar([i + width/2 for i in x], filtered_pct, width, label='Filtered', color='tomato')
+    
+    # Add text labels and formatting
+    ax.set_ylabel('Percentage (%)', fontsize=14)
+    ax.set_title('Metric Transmission by Type', fontsize=16)
+    ax.set_xticks(x)
+    ax.set_xticklabels(metric_types, fontsize=12)
+    ax.legend(fontsize=12)
+    
+    # Add value labels on bars
+    def add_labels(bars):
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate(f'{height:.1f}%',
+                        xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3),  # 3 points vertical offset
+                        textcoords="offset points",
+                        ha='center', va='bottom', fontsize=9)
+    
+    add_labels(sent_bars)
+    add_labels(filtered_bars)
+    
+    # Save the plot
+    plt.tight_layout()
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.savefig('metric_transmission_by_type.png')
+    plt.savefig('metric_transmission_by_type.pdf')
+    plt.show()
+    plt.clf()
+
+
 if __name__ == '__main__':
     plot_barplot_node_count_convergence_round()
     plot_rounds_number_of_known_nodes()
@@ -935,6 +1079,8 @@ if __name__ == '__main__':
     plot_storage_per_node_after_conv()
     plot_bandwidth_per_round()
     plot_3d_time_gr_gc()
+    plot_priority_based_metrics()
+    plot_priority_metrics_by_type()
 
 
 

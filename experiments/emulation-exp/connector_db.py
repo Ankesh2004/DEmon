@@ -163,6 +163,32 @@ class DemonDB:
             "total_messages_for_query INTEGER, "
             "success TEXT)"
         )
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS round_metrics_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER,
+            node_ip TEXT,
+            node_port TEXT,
+            round INTEGER,
+            metrics_sent INTEGER,
+            metrics_filtered INTEGER,
+            timestamp REAL
+        )
+        ''')
+        
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS metric_transmissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER,
+            node_ip TEXT,
+            node_port TEXT,
+            round INTEGER,
+            metric_type TEXT,
+            was_sent INTEGER,
+            metric_value REAL,
+            timestamp REAL
+        )
+        ''')
         self.connection.commit()
         self.connection.close()
 

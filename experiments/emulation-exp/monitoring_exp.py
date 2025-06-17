@@ -438,6 +438,19 @@ def update_data_entries_per_ip():
         experiment.query_queue.put((
                                    "INSERT INTO round_of_node (run_id, ip, port, round, nd, fd, rm, ic, bytes_of_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                                    insert_parameters))
+    
+    # Extract metrics statistics if available
+    metrics_sent = data_flow_per_round.get('metrics_sent', 0)
+    metrics_filtered = data_flow_per_round.get('metrics_filtered', 0)
+    
+    # Store metrics statistics
+    if metrics_sent > 0 or metrics_filtered > 0:
+        metrics_params = (experiment.runs[-1].db_id, client_ip, client_port, round, 
+                         metrics_sent, metrics_filtered, time.time())
+        experiment.query_queue.put((
+            "INSERT INTO round_metrics_stats (run_id, node_ip, node_port, round, metrics_sent, metrics_filtered, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            metrics_params))
+    
     check_convergence(experiment.runs[-1])
     if int(round) >= 80:
         run_converged(experiment.runs[-1])
@@ -497,6 +510,29 @@ def start_demon():
     print_experiment()
     delete_all_nodes()
     return "OK - Experiment finished - bussi k."
+
+
+def create_and_start_demon_node(node_number, node_list, target_count, gossip_rate):
+    # Existing code...
+    
+    # Add metric priority configuration
+    node_data = {
+        # Existing fields...
+        "metric_priorities": {
+            "cpu": int(parser.get('MetricPriorities', 'cpu_priority', fallback=1)),
+            "memory": int(parser.get('MetricPriorities', 'memory_priority', fallback=5)),
+            "network": int(parser.get('MetricPriorities', 'network_priority', fallback=5)),
+            "storage": int(parser.get('MetricPriorities', 'storage_priority', fallback=10))
+        },
+        "metric_deltas": {
+            "cpu": float(parser.get('MetricDeltas', 'cpu_delta', fallback=5.0)),
+            "memory": float(parser.get('MetricDeltas', 'memory_delta', fallback=7.0)),
+            "network": float(parser.get('MetricDeltas', 'network_delta', fallback=15.0)),
+            "storage": float(parser.get('MetricDeltas', 'storage_delta', fallback=10.0))
+        }
+    }
+    
+    # Continue with existing code...
 
 
 if __name__ == "__main__":

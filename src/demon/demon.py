@@ -130,6 +130,27 @@ def compare_and_update_node_data(inc_data):
     for key in all_keys:
         # both nodes store the data if IP
         if key in node.data[latest_entry] and key in new_data:
+
+            # Handle partial metric updates - preserve existing metrics if not in incoming data
+            if 'appSate' in new_data[key] and 'appSate' in node.data[latest_entry][key]:
+                # Get lists of metrics
+                existing_metrics = set(node.data[latest_entry][key]['appSate'].keys())
+                incoming_metrics = set(new_data[key]['appSate'].keys())
+                
+                # For any metric in existing but not in incoming, copy from existing
+                for metric in existing_metrics - incoming_metrics:
+                    new_data[key]['appSate'][metric] = node.data[latest_entry][key]['appSate'][metric]
+            
+            if 'metric_sent_flags' in new_data[key]:
+                sent_count = sum(1 for v in new_data[key]['metric_sent_flags'].values() if v)
+                filtered_count = sum(1 for v in new_data[key]['metric_sent_flags'].values() if not v)
+        
+                # Add to round statistics
+                node.data_flow_per_round[node.cycle].setdefault('metrics_sent', 0)
+                node.data_flow_per_round[node.cycle].setdefault('metrics_filtered', 0)
+                node.data_flow_per_round[node.cycle]['metrics_sent'] += sent_count
+                node.data_flow_per_round[node.cycle]['metrics_filtered'] += filtered_count
+                
             list1 = node.data[latest_entry][key]["hbState"]["failureList"]
             list2 = new_data[key]["hbState"]["failureList"]
             if ('counter' in new_data[key] and 'counter' in node.data[latest_entry][key] \
@@ -199,6 +220,16 @@ def start_node():
                     push_mode=push_mode, client_port=client_port)
     client_thread.start()
     counter_thread.start()
+
+    # Configure metric priorities and deltas if provided
+    if 'metric_priorities' in init_data:
+        global METRIC_PRIORITIES
+        METRIC_PRIORITIES.update(init_data['metric_priorities'])
+    
+    if 'metric_deltas' in init_data:
+        global METRIC_DELTAS
+        METRIC_DELTAS.update(init_data['metric_deltas'])
+
     return "OK"
 
 
@@ -228,6 +259,40 @@ def get_nodelist_from_node():
 @gossip.route('/hello_world', methods=['GET'])
 def get_hello_from_node():
     return "Hello from gossip agent!"
+
+
+# Add new endpoint
+
+@gossip.route('/metrics_priority_stats', methods=['GET'])
+def get_metrics_priority_stats():
+    """Get statistics about priority-based metric filtering"""
+    node = Node.instance()
+    
+    # Calculate stats if node has data
+    if len(node.data) == 0:
+        return json.dumps({"error": "No data available"})
+    
+    # Get sent/filtered counts
+    metrics_sent = node.metrics_sent_count if hasattr(node, 'metrics_sent_count') else 0
+    metrics_filtered = node.metrics_filtered_count if hasattr(node, 'metrics_filtered_count') else 0
+    
+    # Get per-round metrics stats
+    per_round_stats = {}
+    for round_num, stats in node.data_flow_per_round.items():
+        per_round_stats[round_num] = {
+            'metrics_sent': stats.get('metrics_sent', 0),
+            'metrics_filtered': stats.get('metrics_filtered', 0)
+        }
+    
+    # Return statistics
+    return json.dumps({
+        'total_metrics_sent': metrics_sent,
+        'total_metrics_filtered': metrics_filtered,
+        'bandwidth_savings_percent': round(100 * metrics_filtered / (metrics_sent + metrics_filtered) if (metrics_sent + metrics_filtered) > 0 else 0, 2),
+        'per_round_stats': per_round_stats,
+        'priorities': {k: v for k, v in METRIC_PRIORITIES.items()},
+        'deltas': {k: v for k, v in METRIC_DELTAS.items()}
+    })
 
 
 if __name__ == "__main__":
