@@ -30,8 +30,8 @@ except Exception as e:
     print("trace: {}".format(traceback.format_exc()))
     exit(1)
 experiment = None
-#log = logging.getLogger('werkzeug')
-#log.setLevel(logging.ERROR)
+# log = logging.getLogger('werkzeug')
+# log.setLevel(logging.ERROR)
 
 
 class Run:
@@ -450,6 +450,27 @@ def update_data_entries_per_ip():
         experiment.query_queue.put((
             "INSERT INTO round_metrics_stats (run_id, node_ip, node_port, round, metrics_sent, metrics_filtered, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
             metrics_params))
+    
+    # Store detailed per-metric transmission data
+    if client_ip + ":" + client_port in data_stored_in_node:
+        node_data = data_stored_in_node[client_ip + ":" + client_port]
+        if 'metric_sent_flags' in node_data:
+            timestamp = time.time()
+            for metric_type, was_sent in node_data['metric_sent_flags'].items():
+                # Get metric value if available
+                metric_value = None
+                if 'appSate' in node_data and metric_type in node_data['appSate']:
+                    try:
+                        metric_value = float(node_data['appSate'][metric_type])
+                    except (ValueError, TypeError):
+                        pass
+            
+                # Queue the database insert
+                metric_params = (experiment.runs[-1].db_id, client_ip, client_port, round, 
+                                metric_type, 1 if was_sent else 0, metric_value, timestamp)
+                experiment.query_queue.put((
+                    "INSERT INTO metric_transmissions (run_id, node_ip, node_port, round, metric_type, was_sent, metric_value, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    metric_params))
     
     check_convergence(experiment.runs[-1])
     if int(round) >= 80:
