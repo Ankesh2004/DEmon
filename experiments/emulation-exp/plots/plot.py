@@ -1,1086 +1,215 @@
 import sqlite3
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import cm, rcParams
-
-dbname = 'experiments.db'
-
-
-
-class DemonDataDB:
-    def __init__(self):
-        self.connection = sqlite3.connect(dbname, check_same_thread=False)
-        self.cursor = self.connection.cursor()
-
-    def get_runs_grouped_by_node_target_avg(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT node_count, target_count, AVG(convergence_round), AVG(convergence_message_count) FROM run_gc "
-                "GROUP BY node_count, target_count")
-            grouped_runs = self.cursor.fetchall()
-            self.connection.close()
-            return grouped_runs
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_delta_byte_grouped_by_node_count_and_round_50(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            # round < 8 -> 7 is convergence round
-            self.cursor.execute(
-                "SELECT SUM(delta_byte) from delta_each_round_storage WHERE round < 8 AND run_id = 1")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_delta_byte_grouped_by_node_count_and_round_100(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                # round < 9 -> 8 is convergence round
-                "SELECT SUM(delta_byte) from delta_each_round_storage WHERE round < 9 AND run_id = 7")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_delta_byte_grouped_by_node_count_and_round_150(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            # round < 11 -> 10 is convergence round
-            self.cursor.execute(
-                "SELECT SUM(delta_byte) from delta_each_round_storage WHERE round < 11 AND run_id = 3")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_delta_byte_grouped_by_node_count_and_round_200(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            # round < 13 -> 12 is convergence round
-            self.cursor.execute(
-                "SELECT SUM(delta_byte) from delta_each_round_storage WHERE round < 13 AND run_id = 8")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_delta_byte_grouped_by_node_count_and_round_250(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            # round < 19 -> 18 is convergence round
-            self.cursor.execute(
-                "SELECT SUM(delta_byte) from delta_each_round_storage WHERE round < 19 AND run_id = 5")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_delta_byte_grouped_by_node_count_and_round_300(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            # round < 26 -> 25 is convergence round
-            self.cursor.execute(
-                "SELECT SUM(delta_byte) from delta_each_round_storage WHERE round < 26 AND run_id = 6")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_messages_grouped_by_round_gc_2(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT round,sum(nd) AS nd_sum from round_of_node WHERE run_id = 48 GROUP BY round")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_messages_grouped_by_round_gc_3(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT round,sum(nd) AS nd_sum from round_of_node WHERE run_id = 50 GROUP BY round")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_messages_grouped_by_round_gc_4(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT round,sum(nd) AS nd_sum from round_of_node WHERE run_id = 52 GROUP BY round")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_fogmon_runs_grouped_by_node_target_avg(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT node_count, target_count, AVG(convergence_round), AVG(convergence_message_count) FROM run_fogmon "
-                "GROUP BY node_count, target_count")
-            grouped_runs = self.cursor.fetchall()
-            self.connection.close()
-            return grouped_runs
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_runs_grouped_by_node_rate(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT node_count, gossip_rate, AVG(convergence_round), AVG(convergence_message_count), AVG(convergence_time) FROM run_gr "
-                "GROUP BY node_count, gossip_rate")
-            grouped_runs = self.cursor.fetchall()
-            self.connection.close()
-            return grouped_runs
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_sum_aoi_group_by_node_timer(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT node_count,gossip_count, snapshot_timer,AVG(aoi) from age_of_information GROUP BY node_count,gossip_count, snapshot_timer ORDER BY node_count,gossip_count, snapshot_timer")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_fresh_data_grouped_by_round_gc_2(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT round,sum(fd) AS fd_sum from rounds_of_node_incl_after_conv WHERE (run_id = 11 OR run_id = 9) AND round < 41 GROUP BY round")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_fresh_data_grouped_by_round_gc_3(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT round,sum(fd) AS fd_sum from rounds_of_node_incl_after_conv WHERE (run_id = 12 OR run_id = 13) AND round < 41 GROUP BY round")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_fresh_data_grouped_by_round_gc_4(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT round,sum(fd) AS fd_sum from rounds_of_node_incl_after_conv WHERE (run_id = 15 OR run_id = 16) AND round < 41 GROUP BY round")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_byte_grouped_by_round_gc_4(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT round,sum(bytes_of_data) AS bytes_sum from round_of_node WHERE run_id = 52 OR run_id = 53 OR run_id = 54 GROUP BY round")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_byte_grouped_by_round_gc_3(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT round,sum(bytes_of_data) AS bytes_sum from round_of_node WHERE run_id = 50 or run_id = 49 OR run_id = 51 GROUP BY round")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_byte_grouped_by_round_gc_2(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT round,sum(bytes_of_data) AS bytes_sum from round_of_node WHERE run_id = 48 OR run_id = 46 OR run_id = 47 GROUP BY round")
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_runs_grouped_by_node_rate_count(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT node_count, gossip_rate,target_count, AVG(convergence_time) FROM run_gc_gr_time "
-                "GROUP BY node_count, gossip_rate, target_count")
-            grouped_runs = self.cursor.fetchall()
-            self.connection.close()
-            return grouped_runs
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-    def get_delta_byte_grouped_by_node_count_and_round_10(self):
-        try:
-            self.connection = sqlite3.connect(dbname, check_same_thread=False)
-            self.cursor = self.connection.cursor()
-            self.cursor.execute(
-                "SELECT node_count, round_range, AVG(delta_byte) AS total_delta_byte "
-                "FROM ( "
-                "    SELECT node_count, "
-                "           CASE "
-                "               WHEN round BETWEEN 1 AND 10 THEN '10' "
-                "               WHEN round BETWEEN 11 AND 20 THEN '20' "
-                "               WHEN round BETWEEN 21 AND 30 THEN '30' "
-                "               WHEN round BETWEEN 31 AND 40 THEN '40' "
-                "           END AS round_range, "
-                "           delta_byte "
-                "    FROM delta_each_round_storage "
-                "    WHERE round < 41 "
-                ") AS subquery "
-                "GROUP BY node_count, round_range "
-                "ORDER BY node_count, round_range"
-            )
-            rounds = self.cursor.fetchall()
-            return rounds
-        except Exception as e:
-            print("Error DB Query: {}".format(e))
-            return []
-
-
-def plot_barplot_node_count_convergence_round():
-    demon_db = DemonDataDB()
-    data_target_2_round = {'x': [], 'y': []}
-    data_target_3_round = {'x': [], 'y': []}
-    data_target_4_round = {'x': [], 'y': []}
-    for group in demon_db.get_runs_grouped_by_node_target_avg():
-        if group[1] == 2:
-            data_target_2_round['x'].append(group[0])
-            data_target_2_round['y'].append(group[2])
-        if group[1] == 3:
-            data_target_3_round['x'].append(group[0])
-            data_target_3_round['y'].append(group[2])
-        if group[1] == 4:
-            data_target_4_round['x'].append(group[0])
-            data_target_4_round['y'].append(group[2])
-
-    bar_width = 0.25
-
-    index = np.arange(len(data_target_4_round['x']))
-    # Create the figure and axis objects
-    fig, ax = plt.subplots()
-    ax.bar(index, data_target_2_round['y'], bar_width, edgecolor='black', color="tomato", label='gossip_count = 2',
-           hatch='..')
-    ax.bar(index + bar_width, data_target_3_round['y'], bar_width, edgecolor='black', color="royalblue",
-           label='gossip_count = 3', hatch='++')
-    ax.bar(index + 2 * bar_width, data_target_4_round['y'], bar_width, edgecolor='black', color="mediumseagreen",
-           label='gossip_count = 4', hatch='//')
-    ax.set_xticks(index + bar_width)
-    ax.set_xticklabels(data_target_4_round['x'], fontsize=12)
-    ax.set_ylabel('Gossip rounds', fontsize=16)
-    ax.set_xlabel('# of nodes', fontsize=16)
-    ax.legend(fontsize=14)
-    plt.savefig('convergence_plot_demon_all_gc_barplot.png')
-    plt.savefig('convergence_plot_demon_all_gc_barplot.pdf')
-    plt.yticks(fontsize=12)
-    plt.xticks(fontsize=12)
-    plt.legend(fontsize=14)
-    plt.show()
-    plt.clf()
-
-
-def plot_rounds_number_of_known_nodes():
-    demon_db = DemonDataDB()
-    grouped_by_rounds_gc_2 = demon_db.get_messages_grouped_by_round_gc_2()
-    grouped_by_rounds_gc_3 = demon_db.get_messages_grouped_by_round_gc_3()
-    grouped_by_rounds_gc_4 = demon_db.get_messages_grouped_by_round_gc_4()
-    round_data_to_plot_2 = {'x': [], 'y': []}
-    round_data_to_plot_3 = {'x': [], 'y': []}
-    round_data_to_plot_4 = {'x': [], 'y': []}
-    for group in grouped_by_rounds_gc_2:
-        r = group[0]
-        nd_sum = group[1]
-        round_data_to_plot_2['x'].append(r)
-        round_data_to_plot_2['y'].append(nd_sum / 300)
-
-    for group in grouped_by_rounds_gc_3:
-        r = group[0]
-        nd_sum = group[1]
-        round_data_to_plot_3['x'].append(r)
-        round_data_to_plot_3['y'].append(nd_sum / 300)
-
-    for group in grouped_by_rounds_gc_4:
-        r = group[0]
-        nd_sum = group[1]
-        round_data_to_plot_4['x'].append(r)
-        round_data_to_plot_4['y'].append(nd_sum / 300)
-    plt.plot(round_data_to_plot_2['x'][:-8], round_data_to_plot_2['y'][:-8], color="tomato", marker='^',
-             label="gossip_count=2")
-    plt.plot(round_data_to_plot_3['x'], round_data_to_plot_3['y'], color="royalblue", marker='x',
-             label="gossip_count=3")
-    plt.plot(round_data_to_plot_4['x'], round_data_to_plot_4['y'], color="mediumseagreen", marker='o',
-             label="gossip_count=4")
-
-    plt.xlabel('Rounds', fontsize=16)
-    plt.ylabel('# of new nodes known', fontsize=16)
-    plt.legend(fontsize=14)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.grid(True)
-    plt.savefig('demon_nd_per_round_all_gc_nc_300.png')
-    plt.savefig('demon_nd_per_round_all_gc_nc_300.pdf')
-    plt.show()
-    plt.clf()
-
-
-def plot_fogmon_demon_messages_all_gc():
-    target_count_2 = 2
-    target_count_3 = 3
-    target_count_4 = 4
-
-    data_target_2 = {'x': [], 'y': []}
-    data_target_3 = {'x': [], 'y': []}
-    data_target_4 = {'x': [], 'y': []}
-    demon_db = DemonDataDB()
-    for group in demon_db.get_runs_grouped_by_node_target_avg():
-        node_count = group[0]
-        target_count = group[1]
-        avg_convergence_message_count = group[3]/1000
-        if target_count == target_count_2:
-            data_target_2['x'].append(node_count)
-            data_target_2['y'].append(avg_convergence_message_count)
-        if target_count == target_count_3:
-            data_target_3['x'].append(node_count)
-            data_target_3['y'].append(avg_convergence_message_count)
-        if target_count == target_count_4:
-            data_target_4['x'].append(node_count)
-            data_target_4['y'].append(avg_convergence_message_count)
-
-    data_target_2_fog = {'x': [], 'y': []}
-    data_target_3_fog = {'x': [], 'y': []}
-    data_target_4_fog = {'x': [], 'y': []}
-    for group in demon_db.get_fogmon_runs_grouped_by_node_target_avg():
-        node_count = group[0]
-        target_count = group[1]
-        avg_convergence_message_count = group[3]/1000
-        if target_count == target_count_2:
-            data_target_2_fog['x'].append(node_count)
-            data_target_2_fog['y'].append(avg_convergence_message_count)
-        elif target_count == target_count_3:
-            data_target_3_fog['x'].append(node_count)
-            data_target_3_fog['y'].append(avg_convergence_message_count)
-        elif target_count == target_count_4:
-            data_target_4_fog['x'].append(node_count)
-            data_target_4_fog['y'].append(avg_convergence_message_count)
-    # plt.xlabel('# of nodes', fontsize=16)
-    # plt.ylabel('# of messages', fontsize=16)
-    # plt.title('Convergence Messages with different Gossip Count')
-    # plt.legend(fontsize=14)
-    # plt.xticks(fontsize=12)
-    # plt.yticks(fontsize=12)
-    rcParams.update({'figure.autolayout': True})
-    plt.plot(data_target_2['x'], data_target_2['y'], color="tomato", marker='^', label="Demon")
-    plt.plot(data_target_2_fog['x'], data_target_2_fog['y'], color="royalblue", marker='x', label="Fog")
-    plt.xlabel('# of nodes', fontsize=20)
-    plt.ylabel('# of message (K)', fontsize=20)
-    plt.legend(fontsize=18)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
-    plt.grid(True)
-    plt.savefig('convergence_plot_demon_fogmon_2_gc_messages.png')
-    plt.savefig('convergence_plot_demon_fogmon_2_gc_messages.pdf')
-    plt.show()
-    plt.clf()
-
-    plt.plot(data_target_3['x'], data_target_3['y'], color="tomato", marker='^', label="Demon")
-    plt.plot(data_target_3_fog['x'], data_target_3_fog['y'], color="royalblue", marker='x', label="Fog")
-    plt.xlabel('# of nodes', fontsize=20)
-    plt.ylabel('# of message (k)', fontsize=20)
-    plt.legend(fontsize=18)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
-    plt.grid(True)
-    plt.savefig('convergence_plot_demon_fogmon_3_gc_messages.png')
-    plt.savefig('convergence_plot_demon_fogmon_3_gc_messages.pdf')
-    plt.show()
-    plt.clf()
-
-    plt.plot(data_target_4['x'], data_target_4['y'], color="tomato", marker='^', label="Demon")
-    plt.plot(data_target_4_fog['x'], data_target_4_fog['y'], color="royalblue", marker='x', label="Fog")
-    plt.xlabel('# of nodes', fontsize=20)
-    plt.ylabel('# of message (K)', fontsize=20)
-    plt.legend(fontsize=18)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
-    plt.grid(True)
-    plt.savefig('convergence_plot_demon_fogmon_4_gc_messages.png')
-    plt.savefig('convergence_plot_demon_fogmon_4_gc_messages.pdf')
-    plt.show()
-    plt.clf()
-
-
-def plot_all_gr_avg_messages():
-    demon_db = DemonDataDB()
-    # TODO: change DB
-    # demon_runs_gr = demon_db_gr.get_runs_grouped_by_node_rate()
-
-    gossip_rate_2 = 1
-    gossip_rate_4 = 5
-    gossip_rate_6 = 10
-    gossip_rate_15 = 15
-    gossip_rate_8 = 20
-    data_rate_2 = {'x': [], 'y': []}
-    data_rate_4 = {'x': [], 'y': []}
-    data_rate_6 = {'x': [], 'y': []}
-    data_rate_8 = {'x': [], 'y': []}
-    data_rate_15 = {'x': [], 'y': []}
-
-    for group in demon_db.get_runs_grouped_by_node_rate():
-        node_count = group[0]
-        gossip_rate = group[1]
-        avg_convergence_message_count = group[3]/1000
-
-        # Check if the target count matches the one to plot
-        if gossip_rate == gossip_rate_2:
-            data_rate_2['x'].append(node_count)
-            data_rate_2['y'].append(avg_convergence_message_count)
-        elif gossip_rate == gossip_rate_4:
-            data_rate_4['x'].append(node_count)
-            data_rate_4['y'].append(avg_convergence_message_count)
-        elif gossip_rate == gossip_rate_6:
-            data_rate_6['x'].append(node_count)
-            data_rate_6['y'].append(avg_convergence_message_count)
-        elif gossip_rate == gossip_rate_8:
-            data_rate_8['x'].append(node_count)
-            data_rate_8['y'].append(avg_convergence_message_count)
-        elif gossip_rate == gossip_rate_15:
-            data_rate_15['x'].append(node_count)
-            data_rate_15['y'].append(avg_convergence_message_count)
-
-    plt.plot(data_rate_2['x'], data_rate_2['y'], color="tomato", marker='^', label=f'gossip_rate = 1')
-    plt.plot(data_rate_4['x'], data_rate_4['y'], color="royalblue", marker='x', label=f'gossip_rate = 5')
-    plt.plot(data_rate_6['x'], data_rate_6['y'], color="mediumseagreen", marker='o',
-             label=f'gossip_rate = 10')
-    plt.plot(data_rate_15['x'], data_rate_15['y'], color="darkorchid", marker='*', label=f'gossip_rate = 15')
-
-    plt.plot(data_rate_8['x'], data_rate_8['y'], color="goldenrod", marker='2', label=f'gossip_rate = 20')
-    plt.xlabel('# of nodes', fontsize=16)
-    plt.ylabel('# of messages (K)', fontsize=16)
-    # plt.title('Convergence Messages with different Gossip Count')
-    plt.legend(fontsize=14)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.grid(True)
-    plt.savefig('convergence_plot_demon_all_gr_message.png')
-    plt.savefig('convergence_plot_demon_all_gr_message.pdf')
-    plt.show()
-    plt.clf()
-
-
-def plot_all_gc_avg_messages():
-    demon_db = DemonDataDB()
-
-    gossip_count_2 = 2
-    gossip_count_3 = 3
-    gossip_count_4 = 4
-    data_target_2 = {'x': [], 'y': []}
-    data_target_3 = {'x': [], 'y': []}
-    data_target_4 = {'x': [], 'y': []}
-
-    for group in demon_db.get_runs_grouped_by_node_target_avg():
-        node_count = group[0]
-        target_count = group[1]
-        avg_convergence_message_count = group[3]/1000
-        if target_count == gossip_count_2:
-            data_target_2['x'].append(node_count)
-            data_target_2['y'].append(avg_convergence_message_count)
-        elif target_count == gossip_count_3:
-            data_target_3['x'].append(node_count)
-            data_target_3['y'].append(avg_convergence_message_count)
-        elif target_count == gossip_count_4:
-            data_target_4['x'].append(node_count)
-            data_target_4['y'].append(avg_convergence_message_count)
-    plt.plot(data_target_2['x'], data_target_2['y'], color="tomato", marker='^', label=f'gossip_count = 2')
-    plt.plot(data_target_3['x'], data_target_3['y'], color="royalblue", marker='x', label=f'gossip_count = 3')
-    plt.plot(data_target_4['x'], data_target_4['y'], color="mediumseagreen", marker='o',
-             label=f'gossip_count = 4')
-    plt.xlabel('# of nodes', fontsize=16)
-    plt.ylabel('# of messages (K)', fontsize=16)
-    # plt.title('Convergence Messages with different Gossip Count')
-    plt.legend(fontsize=14)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.grid(True)
-    plt.savefig('convergence_plot_demon_all_gc_message.png')
-    plt.savefig('convergence_plot_demon_all_gc_message.pdf')
-    plt.show()
-    plt.clf()
-
-
-def plot_aoi():
-    demon_db = DemonDataDB()
-    aoi_2 = {'x': [], 'y': []}
-    aoi_3 = {'x': [], 'y': []}
-    aoi_4 = {'x': [], 'y': []}
-    aoi_data = demon_db.get_sum_aoi_group_by_node_timer()
-    for group in aoi_data:
-        if group[1] == 2:
-            aoi_2['x'].append(group[2])
-            aoi_2['y'].append(group[3])
-        elif group[1] == 3:
-            aoi_3['x'].append(group[2])
-            aoi_3['y'].append(group[3])
-        elif group[1] == 4:
-            aoi_4['x'].append(group[2])
-            aoi_4['y'].append(group[3])
-    # avg(aoi)
-    cumulative_y_2 = np.cumsum(aoi_2['y'])
-
-    cumulative_y_3 = np.cumsum(aoi_3['y'])
-    cumulative_y_4 = np.cumsum(aoi_4['y'])
-    # plt.plot(aoi_2['x'], cumulative_y_2, color="tomato", marker='^', label=f'gossip_count = 2')
-    plt.plot(aoi_3['x'], cumulative_y_3, color="royalblue", marker='x', label=f'aoi')
-    # plt.plot(aoi_4['x'], cumulative_y_4, color="mediumseagreen", marker='o', label=f'gossip_count = 4')
-    plt.ylabel('Average AoI per node', fontsize=16)
-    plt.xlabel('Time [s]', fontsize=16)
-    plt.legend(fontsize=14)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    # plt.yscale('log')# Show the plot
-    plt.grid(True)
-    plt.savefig('aoi_gc_3.png')
-    plt.savefig('aoi_gc_3.pdf')
-    plt.show()
-    plt.clf()
-
-
-def plot_pushed_data_every_10th_round():
-    demonDB = DemonDataDB()
-    delta_storage = demonDB.get_delta_byte_grouped_by_node_count_and_round_10()
-    delta_storage_50 = {'x': [], 'y': []}
-    delta_storage_100 = {'x': [], 'y': []}
-    delta_storage_150 = {'x': [], 'y': []}
-    delta_storage_200 = {'x': [], 'y': []}
-    delta_storage_250 = {'x': [], 'y': []}
-    delta_storage_300 = {'x': [], 'y': []}
-    delta_storage_50['x'].append(0)
-    delta_storage_50['y'].append(0)
-    delta_storage_100['x'].append(0)
-    delta_storage_100['y'].append(0)
-    delta_storage_150['x'].append(0)
-    delta_storage_150['y'].append(0)
-    delta_storage_200['x'].append(0)
-    delta_storage_200['y'].append(0)
-    delta_storage_250['x'].append(0)
-    delta_storage_250['y'].append(0)
-    delta_storage_300['x'].append(0)
-    delta_storage_300['y'].append(0)
-
-    for group in delta_storage:
-        node_count = group[0]
-        round_ = group[1]
-        delta_kilo_byte = group[2] / 1024
-        if node_count == 50:
-            delta_storage_50['x'].append(round_)
-            delta_storage_50['y'].append(delta_kilo_byte)
-        elif node_count == 100:
-            delta_storage_100['x'].append(round_)
-            delta_storage_100['y'].append(delta_kilo_byte)
-        elif node_count == 150:
-            delta_storage_150['x'].append(round_)
-            delta_storage_150['y'].append(delta_kilo_byte)
-        elif node_count == 200:
-            delta_storage_200['x'].append(round_)
-            delta_storage_200['y'].append(delta_kilo_byte)
-        elif node_count == 250:
-            delta_storage_250['x'].append(round_)
-            delta_storage_250['y'].append(delta_kilo_byte)
-        elif node_count == 300:
-            delta_storage_300['x'].append(round_)
-            delta_storage_300['y'].append(delta_kilo_byte)
-
-    # plt_1 = plt.figure(figsize=(10, 7.5))
-    plt.plot(delta_storage_50['x'], delta_storage_50['y'], color="tomato", marker='^', label=f'n = 50')
-    plt.plot(delta_storage_100['x'], delta_storage_100['y'], color="royalblue", marker='x', label=f'n = 100')
-    plt.plot(delta_storage_150['x'], delta_storage_150['y'], color="mediumseagreen", marker='o',
-             label=f'n = 150')
-    plt.plot(delta_storage_200['x'], delta_storage_200['y'], color="goldenrod", marker='*', label=f'n = 200')
-    plt.plot(delta_storage_250['x'], delta_storage_250['y'], color="indigo", marker='P', label=f'n = 250')
-    plt.plot(delta_storage_300['x'], delta_storage_300['y'], color="dimgray", marker='>', label=f'n = 300')
-
-    plt.xlabel('Rounds', fontsize=20)
-    plt.ylabel('Storage per node [KB]', fontsize=20)
-    # plt.title('Convergence Messages with different Gossip Count')
-    #put legend outside of plot, on top
-    plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.22),
-          ncol=3, fontsize=16, frameon=False)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
-
-    # Show the plot
-    plt.grid(True)
-    plt.savefig('push_storage_per_node.png', bbox_inches='tight')
-    plt.savefig('push_storage_per_node.pdf', bbox_inches='tight')
-    plt.show()
-    plt.clf()
-
-
-def plot_new_data_per_round_incl_after_conv():
-    # Storage per round till/after convergence
-    demon_db = DemonDataDB()
-    grouped_by_rounds_gc_2_after = demon_db.get_fresh_data_grouped_by_round_gc_2()
-    grouped_by_rounds_gc_3_after = demon_db.get_fresh_data_grouped_by_round_gc_3()
-    grouped_by_rounds_gc_4_after = demon_db.get_fresh_data_grouped_by_round_gc_4()
-    fd_by_rounds_gc_2_after = {'x': [], 'y': []}
-    fd_by_rounds_gc_3_after = {'x': [], 'y': []}
-    fd_by_rounds_gc_4_after = {'x': [], 'y': []}
-    for group in grouped_by_rounds_gc_2_after:
-        r = group[0]
-        fd = group[1]
-        fd_by_rounds_gc_2_after['x'].append(r)
-        fd_by_rounds_gc_2_after['y'].append(fd / (300))
-    for group in grouped_by_rounds_gc_3_after:
-        r = group[0]
-        fd = group[1]
-        fd_by_rounds_gc_3_after['x'].append(r)
-        fd_by_rounds_gc_3_after['y'].append(fd / (300))
-    for group in grouped_by_rounds_gc_4_after:
-        r = group[0]
-        fd = group[1]
-        fd_by_rounds_gc_4_after['x'].append(r)
-        fd_by_rounds_gc_4_after['y'].append(fd / (300))
-    # convergence points:
-    # 9 11 12 13 15 16
-
-    plt.plot(fd_by_rounds_gc_2_after['x'], fd_by_rounds_gc_2_after['y'], color="tomato", marker='^',
-             label="gossip_count=2", markersize=4)  # 29 30
-    plt.plot(fd_by_rounds_gc_2_after['x'][30], fd_by_rounds_gc_2_after['y'][30], marker="D", color='black',
-             markersize=6)
-    plt.plot(fd_by_rounds_gc_3_after['x'], fd_by_rounds_gc_3_after['y'], color="royalblue", marker='x',
-             label="gossip_count=3", markersize=4)  # 20 22
-    plt.plot(fd_by_rounds_gc_3_after['x'][21], fd_by_rounds_gc_3_after['y'][21], marker="D", color='black',
-             markersize=6)
-    plt.plot(fd_by_rounds_gc_4_after['x'], fd_by_rounds_gc_4_after['y'], color="mediumseagreen", marker='o',
-             label="gossip_count=4", markersize=4)  # 19
-    plt.plot(fd_by_rounds_gc_4_after['x'][18], fd_by_rounds_gc_4_after['y'][18], marker="D", color='black',
-             label="Convergence", markersize=6)
-
-    # plt.plot(data_target_4['x'], data_target_4['y'], 'mo-', label=f'DEMon')
-
-    plt.xlabel('Rounds', fontsize=16)
-    plt.ylabel('# of new data per node', fontsize=16)
-    #plt.title('Convergence Messages with different Gossip Count')
-    plt.legend(fontsize=14)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-
-    # Show the plot
-    plt.grid(True)
-    plt.savefig('after_convergence_plot_demon_fd_per_node_nc_300.png')
-    plt.savefig('after_convergence_plot_demon_fd_per_node_nc_300.pdf')
-    plt.show()
-    plt.clf()
-
-
-def plot_storage_per_node_after_conv():
-    demonDB = DemonDataDB()
-    values = [demonDB.get_delta_byte_grouped_by_node_count_and_round_50()[0][0] / (50 * 1024),
-              demonDB.get_delta_byte_grouped_by_node_count_and_round_100()[0][0] / (100 * 1024),
-              demonDB.get_delta_byte_grouped_by_node_count_and_round_150()[0][0] / (150 * 1024),
-              demonDB.get_delta_byte_grouped_by_node_count_and_round_200()[0][0] / (200 * 1024),
-              demonDB.get_delta_byte_grouped_by_node_count_and_round_250()[0][0] / (250 * 1024),
-              demonDB.get_delta_byte_grouped_by_node_count_and_round_300()[0][0] / (300 * 1024)]
-    # print(values[5])
-
-    colors = ['tomato', 'royalblue', 'mediumseagreen', 'goldenrod', 'indigo', 'dimgray']
-    hatches = ['o', '+', 'x', '\\', '*', '.']
-    categories = ['50', '100', '150', '200', '250', '300']
-    for i in range(len(categories)):
-        plt.bar(categories[i], values[i], hatch=hatches[i], edgecolor='black', color=colors[i],
-                label='node_count = {}'.format(categories[i]))
-    plt.yscale('log')
-    plt.xlabel('System size', fontsize=18)
-    plt.ylabel('Storage per node [KB]', fontsize=18)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
-    # plt.legend()
-    plt.savefig('storage_convergence_pernode.png', bbox_inches='tight')
-    plt.savefig('storage_convergence_pernode.pdf', bbox_inches='tight')
-    plt.show()
-    plt.clf()
-
-
-def plot_bandwidth_per_round():
-    # Bandwidth per round plot
-    demon_db = DemonDataDB()
-    grouped_by_rounds_gc_2_bytes = demon_db.get_byte_grouped_by_round_gc_2()
-    grouped_by_rounds_gc_3_bytes = demon_db.get_byte_grouped_by_round_gc_3()
-    grouped_by_rounds_gc_4_bytes = demon_db.get_byte_grouped_by_round_gc_4()
-    round_data_to_plot_2_bytes = {'x': [], 'y': []}
-    round_data_to_plot_3_bytes = {'x': [], 'y': []}
-    round_data_to_plot_4_bytes = {'x': [], 'y': []}
-    for group in grouped_by_rounds_gc_2_bytes:
-        r = group[0]
-        byte_sum = group[1]
-        round_data_to_plot_2_bytes['x'].append(r)
-        round_data_to_plot_2_bytes['y'].append(byte_sum / (1048576 * 300 * 3))
-
-    for group in grouped_by_rounds_gc_3_bytes:
-        r = group[0]
-        byte_sum = group[1]
-        round_data_to_plot_3_bytes['x'].append(r)
-        round_data_to_plot_3_bytes['y'].append(byte_sum / (1048576 * 300 * 3))
-
-    for group in grouped_by_rounds_gc_4_bytes:
-        r = group[0]
-        byte_sum = group[1]
-        round_data_to_plot_4_bytes['x'].append(r)
-        round_data_to_plot_4_bytes['y'].append(byte_sum / (1048576 * 300 * 3))
-
-    plt.plot(round_data_to_plot_2_bytes['x'], round_data_to_plot_2_bytes['y'], color="tomato", marker='^',
-             label="gc=2")
-    plt.plot(round_data_to_plot_3_bytes['x'], round_data_to_plot_3_bytes['y'], color="royalblue", marker='x',
-             label="gc=3")
-    plt.plot(round_data_to_plot_4_bytes['x'], round_data_to_plot_4_bytes['y'], color="mediumseagreen", marker='o',
-             label="gc=4")
-    plt.xlabel('Rounds', fontsize=18)
-    plt.ylabel('Node bandwidth [MB]', fontsize=18)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
-    # plt.title('Convergence Messages with different Gossip Count')
-    plt.legend(fontsize=18, loc='upper right')
-
-    # Show the plot
-    plt.grid(True)
-    plt.savefig('convergence_plot_demon_bandwidth_per_node_nc_300.png', bbox_inches='tight')
-    plt.savefig('convergence_plot_demon_bandwidth_per_node_nc_300.pdf', bbox_inches='tight')
-    plt.show()
-    plt.clf()
-
-
-def plot_3d_time_gr_gc():
-    demon_db = DemonDataDB()
-    gr_gc_data = demon_db.get_runs_grouped_by_node_rate_count()
-    # there are 3 different target counts 2,3,4 and 4 different gossip rates 2,4,6,8
-    # target count is stored in index 2 and gossip rate in index 1
-    # goal is to get the convergence time for each target count and gossip rate
-    # data example is (70, 6, 3, 116.26352826754233), where 70 is the node count, 6 is the gossip rate, 3 is the target count and 116.26352826754233 is the convergence time
-    # the data is ordered by node count, gossip rate and target count, now permutate all combinations of gossip rate and target count
-    gc_2_gr_2 = {'x': [], 'y': []}
-    gc_2_gr_4 = {'x': [], 'y': []}
-    gc_2_gr_6 = {'x': [], 'y': []}
-    gc_2_gr_8 = {'x': [], 'y': []}
-    gc_3_gr_2 = {'x': [], 'y': []}
-    gc_3_gr_4 = {'x': [], 'y': []}
-    gc_3_gr_6 = {'x': [], 'y': []}
-    gc_3_gr_8 = {'x': [], 'y': []}
-    gc_4_gr_2 = {'x': [], 'y': []}
-    gc_4_gr_4 = {'x': [], 'y': []}
-    gc_4_gr_6 = {'x': [], 'y': []}
-    gc_4_gr_8 = {'x': [], 'y': []}
-
-    nc_10 = {'x': [], 'y': [], 'z': []}
-    nc_300 = {'x': [], 'y': [], 'z': []}
-
-    for group in gr_gc_data:
-
-        if group[0] == 10:
-            # gr
-            nc_10['x'].append(group[1])
-            nc_10['y'].append(group[2])
-            nc_10['z'].append(group[3])
-        if group[0] == 300:  # gr
-            nc_300['x'].append(group[1])
-            nc_300['y'].append(group[2])
-            nc_300['z'].append(group[3])
-        if group[2] == 2:
-            if group[1] == 2:
-                gc_2_gr_2['x'].append(group[1])
-                gc_2_gr_2['y'].append(group[3])
-            if group[1] == 4:
-                gc_2_gr_4['x'].append(group[0])
-                gc_2_gr_4['y'].append(group[3])
-            if group[1] == 6:
-                gc_2_gr_6['x'].append(group[0])
-                gc_2_gr_6['y'].append(group[3])
-            if group[1] == 8:
-                gc_2_gr_8['x'].append(group[0])
-                gc_2_gr_8['y'].append(group[3])
-
-        if group[2] == 3:
-            if group[1] == 2:
-                gc_3_gr_2['x'].append(group[0])
-                gc_3_gr_2['y'].append(group[3])
-            if group[1] == 4:
-                gc_3_gr_4['x'].append(group[0])
-                gc_3_gr_4['y'].append(group[3])
-            if group[1] == 6:
-                gc_3_gr_6['x'].append(group[0])
-                gc_3_gr_6['y'].append(group[3])
-            if group[1] == 8:
-                gc_3_gr_8['x'].append(group[0])
-                gc_3_gr_8['y'].append(group[3])
-
-        if group[2] == 4:
-            if group[1] == 2:
-                gc_4_gr_2['x'].append(group[0])
-                gc_4_gr_2['y'].append(group[3])
-            if group[1] == 4:
-                gc_4_gr_4['x'].append(group[0])
-                gc_4_gr_4['y'].append(group[3])
-            if group[1] == 6:
-                gc_4_gr_6['x'].append(group[0])
-                gc_4_gr_6['y'].append(group[3])
-            if group[1] == 8:
-                gc_4_gr_8['x'].append(group[0])
-                gc_4_gr_8['y'].append(group[3])
-
-    # append all data to one list
-    gc_gr_data = [gc_2_gr_2, gc_2_gr_4, gc_2_gr_6, gc_2_gr_8, gc_3_gr_2, gc_3_gr_4, gc_3_gr_6, gc_3_gr_8, gc_4_gr_2,
-                  gc_4_gr_4, gc_4_gr_6, gc_4_gr_8]
-
-    x = nc_300['x']
-    y = nc_300['y']
-    z = nc_300['z']
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-
-    bar_width = 2.5
-    bar_length = 0.5
-
-    start = min(z) - 100
-    x_centered = np.array(x) - bar_width / 2
-    y_centered = np.array(y) - bar_length / 2
-    z_scaled = np.array(z) - start
-
-    # COLORMAP:
-    colormap = cm.turbo  # You can choose a different colormap here
-    z_normalized = np.array(z_scaled) / max(z_scaled)
-    colors = [colormap(z) for z in z_normalized]
-    ax.bar3d(x_centered, y_centered, start, bar_width, bar_length, z_scaled, shade=True, color=colors)
-
-    ax.set_xlabel('gossip_rate')
-    ax.set_ylabel('gossip_count')
-    ax.set_zlabel('Time [s]')
-    ax.set_xticks(x)
-    ax.set_xticklabels(x)
-    ax.set_yticks(y)
-    ax.set_yticklabels(y)
-    ax.invert_yaxis()
-    ax.invert_xaxis()
-    ax.set_zlim(start, max(z))
-
-    plt.show()
-    fig.savefig("time3dplot.png")
-    fig.savefig('time3dplot.pdf')
-    plt.clf()
-
-
-def plot_priority_based_metrics():
-    """Plot metrics sent vs filtered by priority and their impact on bandwidth"""
-    plt.figure(figsize=(12, 8))
+import pandas as pd
+from matplotlib.ticker import PercentFormatter
+import os
+
+db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'demonDB.db')
+
+
+def create_voi_bandwidth_plots():
+    """
+    Create plots visualizing the Value of Information (VOI) based bandwidth usage
+    using the metric_transmissions and round_metrics_stats tables.
+    """
+    # Connect to the database
+    conn = sqlite3.connect(db_path)
     
-    demon_db = DemonDataDB()
+    # Query 1: Get aggregate stats by round
+    metrics_stats_df = pd.read_sql("""
+        SELECT round, 
+               SUM(metrics_sent) as sent, 
+               SUM(metrics_filtered) as filtered,
+               SUM(metrics_sent + metrics_filtered) as total
+        FROM round_metrics_stats
+        GROUP BY round
+        ORDER BY round
+    """, conn)
     
-    # Query database for metrics stats
-    try:
-        demon_db.connection = sqlite3.connect(dbname, check_same_thread=False)
-        demon_db.cursor = demon_db.connection.cursor()
-        demon_db.cursor.execute('''
-            SELECT round, SUM(metrics_sent) as sent, SUM(metrics_filtered) as filtered
-            FROM round_metrics_stats
-            GROUP BY round
-            ORDER BY round
-        ''')
-        metrics_data = demon_db.cursor.fetchall()
-        demon_db.connection.close()
-    except Exception as e:
-        print(f"Error querying metrics data: {e}")
-        return
+    # Query 2: Get bandwidth usage by metric type
+    metrics_by_type_df = pd.read_sql("""
+        SELECT metric_type, 
+               SUM(CASE WHEN was_sent = 1 THEN 1 ELSE 0 END) as sent_count,
+               SUM(CASE WHEN was_sent = 0 THEN 1 ELSE 0 END) as filtered_count,
+               COUNT(*) as total_count
+        FROM metric_transmissions
+        GROUP BY metric_type
+    """, conn)
     
-    if not metrics_data:
-        print("No metrics data found for priority-based filtering")
-        return
+    # Query 3: Get bandwidth usage over time for different nodes
+    node_metrics_df = pd.read_sql("""
+        SELECT node_ip, round, 
+               SUM(metrics_sent) as sent, 
+               SUM(metrics_filtered) as filtered
+        FROM round_metrics_stats
+        GROUP BY node_ip, round
+        ORDER BY node_ip, round
+    """, conn)
+    
+    # Calculate bandwidth savings percentages
+    if not metrics_stats_df.empty:
+        metrics_stats_df['savings_pct'] = (metrics_stats_df['filtered'] / metrics_stats_df['total']) * 100
+    
+    # Close connection
+    conn.close()
+    
+    # Create the plots
+    
+    # Plot 1: Overall VOI Bandwidth Usage
+    if not metrics_stats_df.empty:
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
         
-    # Prepare data for plotting
-    rounds = [d[0] for d in metrics_data]
-    sent = [d[1] for d in metrics_data]
-    filtered = [d[2] for d in metrics_data]
-    total = [s + f for s, f in zip(sent, filtered)]
-    savings = [100 * f / (s + f) if (s + f) > 0 else 0 for s, f in zip(sent, filtered)]
+        # Stacked area chart for sent vs filtered metrics
+        rounds = metrics_stats_df['round']
+        sent = metrics_stats_df['sent']
+        filtered = metrics_stats_df['filtered']
+        
+        ax1.stackplot(rounds, sent, filtered, labels=['Sent Metrics', 'Filtered Metrics'],
+                     colors=['royalblue', 'tomato'], alpha=0.7)
+        ax1.set_ylabel('Number of Metrics', fontsize=14)
+        ax1.set_title('VOI-Based Metric Transmission by Round', fontsize=16)
+        ax1.legend(loc='upper left', fontsize=12)
+        ax1.grid(alpha=0.3)
+        
+        # Line chart for bandwidth savings percentage
+        ax2.plot(rounds, metrics_stats_df['savings_pct'], color='green', marker='o', linewidth=2)
+        ax2.set_xlabel('Round Number', fontsize=14)
+        ax2.set_ylabel('Bandwidth Savings (%)', fontsize=14)
+        ax2.set_title('Percentage of Bandwidth Saved with VOI Filtering', fontsize=16)
+        ax2.grid(alpha=0.3)
+        ax2.yaxis.set_major_formatter(PercentFormatter())
+        
+        plt.tight_layout()
+        plt.savefig('voi_bandwidth_usage.png')
+        plt.savefig('voi_bandwidth_usage.pdf')
+        plt.close()
     
-    # Create subplot for metrics counts
-    plt.subplot(2, 1, 1)
-    plt.stackplot(rounds, sent, filtered, 
-                 labels=['Sent Metrics', 'Filtered Metrics'],
-                 colors=['royalblue', 'tomato'])
-    plt.xlabel('Rounds', fontsize=14)
-    plt.ylabel('Metric Count', fontsize=14)
-    plt.title('Priority-Based Metric Transmission', fontsize=16)
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.legend(loc='upper right', fontsize=12)
+    # Plot 2: Bandwidth Usage by Metric Type
+    if not metrics_by_type_df.empty:
+        fig, ax = plt.subplots(figsize=(14, 8))
+        
+        metrics = metrics_by_type_df['metric_type']
+        sent = metrics_by_type_df['sent_count']
+        filtered = metrics_by_type_df['filtered_count']
+        
+        # Calculate percentages
+        sent_pct = sent / (sent + filtered) * 100
+        filtered_pct = filtered / (sent + filtered) * 100
+        
+        # Bar width
+        width = 0.35
+        
+        # Bar positions
+        x = np.arange(len(metrics))
+        
+        # Create the bars
+        sent_bars = ax.bar(x - width/2, sent_pct, width, label='Sent', color='royalblue')
+        filtered_bars = ax.bar(x + width/2, filtered_pct, width, label='Filtered', color='tomato')
+        
+        # Add labels and formatting
+        ax.set_xlabel('Metric Type', fontsize=14)
+        ax.set_ylabel('Percentage (%)', fontsize=14)
+        ax.set_title('VOI Metric Transmission Distribution by Type', fontsize=16)
+        ax.set_xticks(x)
+        ax.set_xticklabels(metrics, rotation=45, ha='right')
+        ax.yaxis.set_major_formatter(PercentFormatter())
+        ax.legend(fontsize=12)
+        ax.grid(axis='y', alpha=0.3)
+        
+        # Add value labels on bars
+        def add_labels(bars):
+            for bar in bars:
+                height = bar.get_height()
+                ax.annotate(f'{height:.1f}%',
+                            xy=(bar.get_x() + bar.get_width() / 2, height),
+                            xytext=(0, 3),  # 3 points vertical offset
+                            textcoords="offset points",
+                            ha='center', va='bottom', fontsize=10)
+        
+        add_labels(sent_bars)
+        add_labels(filtered_bars)
+        
+        plt.tight_layout()
+        plt.savefig('voi_metrics_by_type.png')
+        plt.savefig('voi_metrics_by_type.pdf')
+        plt.close()
     
-    # Create subplot for bandwidth savings percentage
-    plt.subplot(2, 1, 2)
-    plt.plot(rounds, savings, color='mediumseagreen', linewidth=2, marker='o', markersize=4)
-    plt.xlabel('Rounds', fontsize=14)
-    plt.ylabel('Bandwidth Savings (%)', fontsize=14)
-    plt.title('Bandwidth Savings from Priority-Based Filtering', fontsize=16)
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.tight_layout()
+    # Plot 3: Cumulative Bandwidth Savings
+    if not metrics_stats_df.empty:
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        # Calculate cumulative metrics
+        metrics_stats_df['cum_sent'] = metrics_stats_df['sent'].cumsum()
+        metrics_stats_df['cum_filtered'] = metrics_stats_df['filtered'].cumsum()
+        metrics_stats_df['cum_total'] = metrics_stats_df['total'].cumsum()
+        metrics_stats_df['cum_savings_pct'] = (metrics_stats_df['cum_filtered'] / metrics_stats_df['cum_total']) * 100
+        
+        # Plot cumulative sent and filtered
+        ax.plot(metrics_stats_df['round'], metrics_stats_df['cum_sent'], 
+                color='royalblue', marker='o', linewidth=2, label='Cumulative Sent')
+        ax.plot(metrics_stats_df['round'], metrics_stats_df['cum_filtered'], 
+                color='tomato', marker='s', linewidth=2, label='Cumulative Filtered')
+        ax.plot(metrics_stats_df['round'], metrics_stats_df['cum_total'], 
+                color='purple', marker='^', linewidth=2, label='Cumulative Total')
+        
+        # Add savings percentage line on secondary y-axis
+        ax2 = ax.twinx()
+        ax2.plot(metrics_stats_df['round'], metrics_stats_df['cum_savings_pct'], 
+                 color='green', marker='d', linewidth=2, linestyle='--', label='Savings %')
+        ax2.set_ylabel('Bandwidth Savings (%)', fontsize=14)
+        ax2.yaxis.set_major_formatter(PercentFormatter())
+        
+        # Set labels and title
+        ax.set_xlabel('Round', fontsize=14)
+        ax.set_ylabel('Cumulative Metric Count', fontsize=14)
+        ax.set_title('Cumulative VOI Bandwidth Usage and Savings', fontsize=16)
+        
+        # Combine legends
+        lines1, labels1 = ax.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax.legend(lines1 + lines2, labels1 + labels2, loc='upper left', fontsize=12)
+        
+        ax.grid(alpha=0.3)
+        plt.tight_layout()
+        plt.savefig('voi_cumulative_bandwidth.png')
+        plt.savefig('voi_cumulative_bandwidth.pdf')
+        plt.close()
     
-    # Add a horizontal line for average savings
-    avg_savings = sum(savings) / len(savings) if savings else 0
-    plt.axhline(y=avg_savings, color='darkred', linestyle='--', 
-                label=f'Avg Savings: {avg_savings:.1f}%')
-    plt.legend(fontsize=12)
+    # Plot 4: Node Comparison - VOI Effectiveness
+    if not node_metrics_df.empty:
+        # Get top 5 nodes by total message count
+        top_nodes = node_metrics_df.groupby('node_ip')[['sent', 'filtered']].sum().reset_index()
+        top_nodes['total'] = top_nodes['sent'] + top_nodes['filtered']
+        top_nodes = top_nodes.sort_values('total', ascending=False).head(5)['node_ip'].tolist()
+        
+        # Filter for top nodes
+        top_node_data = node_metrics_df[node_metrics_df['node_ip'].isin(top_nodes)]
+        
+        # Plot
+        fig, ax = plt.subplots(figsize=(14, 8))
+        
+        for i, node in enumerate(top_nodes):
+            node_data = top_node_data[top_node_data['node_ip'] == node]
+            if not node_data.empty:
+                total = node_data['sent'] + node_data['filtered']
+                savings_pct = (node_data['filtered'] / total) * 100
+                ax.plot(node_data['round'], savings_pct, marker='o', linewidth=2, 
+                        label=f'Node {node}')
+        
+        ax.set_xlabel('Round', fontsize=14)
+        ax.set_ylabel('Bandwidth Savings (%)', fontsize=14)
+        ax.set_title('VOI Bandwidth Savings by Node', fontsize=16)
+        ax.legend(fontsize=12, loc='best')
+        ax.grid(alpha=0.3)
+        ax.yaxis.set_major_formatter(PercentFormatter())
+        
+        plt.tight_layout()
+        plt.savefig('voi_node_comparison.png')
+        plt.savefig('voi_node_comparison.pdf')
+        plt.close()
     
-    # Save the plot
-    plt.savefig('priority_based_metrics.png')
-    print(f"Saved priority-based metrics plot to priority_based_metrics.png")
-    plt.savefig('priority_based_metrics.pdf')
-    plt.clf()
+    print("VOI bandwidth usage plots created successfully!")
 
-
-def plot_priority_metrics_by_type():
-    """Plot the transmission frequency of different metric types"""
-    plt.figure(figsize=(10, 6))
-    
-    demon_db = DemonDataDB()
-    
-    # Query database for metric type stats
-    cursor = demon_db.connection.cursor()
-    cursor.execute('''
-        SELECT metric_type, COUNT(*) as sent_count
-        FROM metric_transmissions
-        WHERE was_sent = 1
-        GROUP BY metric_type
-    ''')
-    sent_data = cursor.fetchall()
-    
-    cursor.execute('''
-        SELECT metric_type, COUNT(*) as filtered_count
-        FROM metric_transmissions
-        WHERE was_sent = 0
-        GROUP BY metric_type
-    ''')
-    filtered_data = cursor.fetchall()
-    
-    # Convert to dictionaries for easier access
-    sent_dict = {d[0]: d[1] for d in sent_data}
-    filtered_dict = {d[0]: d[1] for d in filtered_data}
-    
-    # List of all metric types
-    metric_types = list(set(list(sent_dict.keys()) + list(filtered_dict.keys())))
-    
-    # Prepare data for plotting
-    sent_counts = [sent_dict.get(m, 0) for m in metric_types]
-    filtered_counts = [filtered_dict.get(m, 0) for m in metric_types]
-    total_counts = [s + f for s, f in zip(sent_counts, filtered_counts)]
-    
-    # Calculate percentages
-    sent_pct = [100 * s / t if t > 0 else 0 for s, t in zip(sent_counts, total_counts)]
-    filtered_pct = [100 * f / t if t > 0 else 0 for f, t in zip(filtered_counts, total_counts)]
-    
-    # Create the bar chart
-    x = range(len(metric_types))
-    width = 0.35
-    
-    fig, ax = plt.subplots(figsize=(12, 7))
-    sent_bars = ax.bar([i - width/2 for i in x], sent_pct, width, label='Sent', color='royalblue')
-    filtered_bars = ax.bar([i + width/2 for i in x], filtered_pct, width, label='Filtered', color='tomato')
-    
-    # Add text labels and formatting
-    ax.set_ylabel('Percentage (%)', fontsize=14)
-    ax.set_title('Metric Transmission by Type', fontsize=16)
-    ax.set_xticks(x)
-    ax.set_xticklabels(metric_types, fontsize=12)
-    ax.legend(fontsize=12)
-    
-    # Add value labels on bars
-    def add_labels(bars):
-        for bar in bars:
-            height = bar.get_height()
-            ax.annotate(f'{height:.1f}%',
-                        xy=(bar.get_x() + bar.get_width() / 2, height),
-                        xytext=(0, 3),  # 3 points vertical offset
-                        textcoords="offset points",
-                        ha='center', va='bottom', fontsize=9)
-    
-    add_labels(sent_bars)
-    add_labels(filtered_bars)
-    
-    # Save the plot
-    plt.tight_layout()
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.savefig('metric_transmission_by_type.png')
-    plt.savefig('metric_transmission_by_type.pdf')
-    plt.show()
-    plt.clf()
-
-
-if __name__ == '__main__':
-    plot_barplot_node_count_convergence_round()
-    plot_rounds_number_of_known_nodes()
-    plot_fogmon_demon_messages_all_gc()
-    plot_all_gr_avg_messages()
-    plot_all_gc_avg_messages()
-    plot_aoi()
-    plot_new_data_per_round_incl_after_conv()
-    plot_pushed_data_every_10th_round()
-    plot_storage_per_node_after_conv()
-    plot_bandwidth_per_round()
-    plot_3d_time_gr_gc()
-    plot_priority_based_metrics()
-    plot_priority_metrics_by_type()
-
-
-
+if __name__ == "__main__":
+    create_voi_bandwidth_plots()
